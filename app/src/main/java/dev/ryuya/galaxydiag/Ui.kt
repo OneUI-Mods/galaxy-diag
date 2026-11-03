@@ -82,6 +82,7 @@ class Ui(val activity: AppCompatActivity) {
             isAllCaps = false
             icon = ContextCompat.getDrawable(activity, drawable)
             iconSize = dp(20)
+            iconGravity = MaterialButton.ICON_GRAVITY_TEXT_START
             iconPadding = dp(8)
             cornerRadius = dp(16)
             insetTop = 0

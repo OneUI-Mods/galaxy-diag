@@ -174,10 +174,11 @@ class MainActivity : AppCompatActivity() {
         val state = prefs.getString("last_connection", null)
         val legacyOpen =
             state == null && success && prefs.getString("last_operation", "") == "enable"
-        val open = state == "true" || legacyOpen
+        val open = success && (state == "true" || legacyOpen)
         val closed =
-            state == "false" ||
-                (state == null && success && prefs.getString("last_operation", "") == "disable")
+            success &&
+                (state == "false" ||
+                    (state == null && prefs.getString("last_operation", "") == "disable"))
         val at = prefs.getLong("last_at", 0)
         title.text =
             when {

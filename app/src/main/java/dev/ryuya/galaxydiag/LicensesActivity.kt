@@ -35,6 +35,8 @@ class LicensesActivity : AppCompatActivity() {
             TextInputLayout(this).apply {
                 hint = "ライブラリを検索"
                 boxBackgroundMode = TextInputLayout.BOX_BACKGROUND_FILLED
+                boxStrokeWidth = 0
+                boxStrokeWidthFocused = 0
                 setBoxBackgroundColorResource(R.color.surface)
                 setBoxCornerRadii(
                     ui.dp(16).toFloat(),

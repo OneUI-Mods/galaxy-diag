@@ -18,3 +18,10 @@ Galaxy S26 Ultra SM-S948Q / SM8850 / Android17 BZI9, KernelSU samsung-v2.2. Root
 No actual device reboot was performed. The receiver/job test proves that production code path on the running device, not boot delivery or timing after a physical reboot. NR reception, long-duration battery cost, firmware updates, other models and Samsung deep-sleep restrictions remain unverified. A cached app process is not a resident service; only request-triggered work is implemented.
 
 Detailed screenshots, package/signature checks and device invariants are retained outside the public source tree in the investigation workspace. User-facing release notes contain behavior and limitations rather than this test history.
+
+
+## 0.2.0 visual redesign
+
+The main screen now has one primary NSG action, a connection summary, secondary actions and grouped settings rows. Day/night colors use resource variants; appearance selection changes only this app. The current font and display scale fit the complete main screen without clipping. Day and night main screens and the license list were inspected on the physical device. The primary action color with white text has a calculated contrast ratio of5.02:1. App information and appearance choices remain accessible through the top-right information icon. Existing boot automation settings were preserved on upgrade.
+
+The license search uses a grouped list and reports matching results. Opening license text hides only this app's keyboard and limits the detail scroll area. Theme settings are restored to following the device after validation. Screenshots are kept in the private investigation workspace rather than publishing phone status-bar content. The fixed root notification and bounded boot job are unchanged; only the recorded connection state now includes an explicit open/closed/unknown field for presentation.
