@@ -1,6 +1,14 @@
 <resources>
     <style name="Theme.GalaxyDiag" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:fontFamily">sans</item>
-        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowBackground">@color/page</item>
+        <item name="colorPrimary">@color/brand</item>
+        <item name="colorOnPrimary">@color/page</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorOnSurface">@color/ink</item>
+        <item name="colorOnSurfaceVariant">@color/muted</item>
+        <item name="android:colorBackground">@color/page</item>
+        <item name="android:textColorPrimary">@color/ink</item>
+        <item name="android:textColorSecondary">@color/muted</item>
     </style>
 </resources>

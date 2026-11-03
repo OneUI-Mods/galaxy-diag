@@ -2,102 +2,136 @@ package dev.ryuya.galaxydiag
 
 import android.os.Bundle
 import android.text.Editable
+import android.text.InputType
 import android.text.TextWatcher
-import android.widget.EditText
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import org.json.JSONArray
 
 class LicensesActivity : AppCompatActivity() {
-    private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val layout =
-            LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(dp(24), dp(24), dp(24), dp(24))
-            }
-        val scroll = ScrollView(this).apply { addView(layout) }
-        setContentView(scroll)
-        ViewCompat.setOnApplyWindowInsetsListener(scroll) { view, insets ->
-            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
-            insets
-        }
-        layout.addView(
-            MaterialButton(this).apply {
-                text = "戻る"
-                setOnClickListener { finish() }
-            }
+        val ui = Ui(this)
+        val content = ui.column().apply { setPadding(ui.dp(20), ui.dp(12), ui.dp(20), ui.dp(28)) }
+        val toolbar = ui.horizontal()
+        toolbar.addView(ui.iconButton(R.drawable.ic_back, "戻る") { finish() })
+        toolbar.addView(ui.text("Galaxy DIAG", 14f, R.color.muted))
+        content.addView(toolbar)
+        content.addView(
+            ui.text("ライセンス", 32f, medium = true),
+            LinearLayout.LayoutParams(-1, -2).apply {
+                topMargin = ui.dp(24)
+                bottomMargin = ui.dp(22)
+            },
         )
-        layout.addView(
-            TextView(this).apply {
-                text = "ライセンス"
-                textSize = 28f
-            }
-        )
-        val search =
-            EditText(this).apply {
+        val searchBox =
+            TextInputLayout(this).apply {
                 hint = "ライブラリを検索"
-                setSingleLine()
+                boxBackgroundMode = TextInputLayout.BOX_BACKGROUND_FILLED
+                setBoxBackgroundColorResource(R.color.surface)
+                setBoxCornerRadii(
+                    ui.dp(16).toFloat(),
+                    ui.dp(16).toFloat(),
+                    ui.dp(16).toFloat(),
+                    ui.dp(16).toFloat(),
+                )
+                setStartIconDrawable(R.drawable.ic_search)
+                endIconMode = TextInputLayout.END_ICON_CLEAR_TEXT
             }
-        layout.addView(search)
-        val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        layout.addView(list)
+        val search =
+            TextInputEditText(searchBox.context).apply {
+                setSingleLine()
+                inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_FILTER
+                imeOptions = EditorInfo.IME_ACTION_SEARCH or EditorInfo.IME_FLAG_NO_EXTRACT_UI
+            }
+        searchBox.addView(search)
+        content.addView(searchBox)
+        val count = ui.text("", 12f, R.color.muted)
+        content.addView(
+            count,
+            LinearLayout.LayoutParams(-1, -2).apply {
+                setMargins(ui.dp(4), ui.dp(18), 0, ui.dp(10))
+            },
+        )
+        val list = ui.column()
+        val card = ui.card()
+        card.addView(list)
+        content.addView(card)
+        ui.install(content, ime = true)
         val data =
             assets.open("legal/libraries.json").bufferedReader().use { JSONArray(it.readText()) }
         val entries = (0 until data.length()).map { data.getJSONObject(it) }
         fun render(query: String) {
             list.removeAllViews()
-            entries
-                .filter {
-                    it.getString("id").contains(query, true) ||
-                        it.optString("title").contains(query, true)
+            val matching = entries.filter { item ->
+                listOf("id", "title", "version", "license").any {
+                    item.optString(it).contains(query, true)
                 }
-                .forEach { item ->
-                    list.addView(
-                        MaterialButton(this).apply {
-                            text =
-                                item.optString("title", item.getString("id")) +
-                                    " " +
-                                    item.optString("version")
-                            setOnClickListener {
-                                val license =
-                                    assets.open(item.getString("asset")).bufferedReader().use {
-                                        it.readText()
-                                    }
-                                val notice = item.optString("notice")
-                                val body =
-                                    TextView(this@LicensesActivity).apply {
-                                        text =
-                                            item.getString("id") +
-                                                "\n" +
-                                                item.getString("license") +
-                                                "\n\n" +
-                                                notice +
-                                                "\n\n" +
-                                                license
-                                        setPadding(dp(24), dp(16), dp(24), dp(16))
-                                        setTextIsSelectable(true)
-                                    }
-                                MaterialAlertDialogBuilder(this@LicensesActivity)
-                                    .setTitle(item.optString("title"))
-                                    .setView(
-                                        ScrollView(this@LicensesActivity).apply { addView(body) }
-                                    )
-                                    .setPositiveButton("閉じる", null)
-                                    .show()
+            }
+            count.text = "${matching.size}件のライブラリ"
+            if (matching.isEmpty())
+                list.addView(
+                    ui.text("一致するライブラリはありません", 14f, R.color.muted).apply {
+                        setPadding(ui.dp(20), ui.dp(24), ui.dp(20), ui.dp(24))
+                    }
+                )
+            matching.forEachIndexed { index, item ->
+                if (index > 0) list.addView(ui.divider())
+                val label = item.optString("title", item.getString("id"))
+                val version = item.optString("version")
+                list.addView(
+                    ui.row(
+                        label,
+                        "$version  ·  ${item.getString("license")}",
+                        R.drawable.ic_document,
+                    ) {
+                        getSystemService(InputMethodManager::class.java)
+                            .hideSoftInputFromWindow(search.windowToken, 0)
+                        search.clearFocus()
+                        val license =
+                            assets.open(item.getString("asset")).bufferedReader().use {
+                                it.readText()
                             }
+                        val body =
+                            TextView(this).apply {
+                                text =
+                                    item.getString("id") +
+                                        "\n" +
+                                        version +
+                                        "\n\n" +
+                                        item.optString("notice") +
+                                        "\n\n" +
+                                        license
+                                textSize = 13f
+                                setTextColor(ui.color(R.color.ink))
+                                setLineSpacing(ui.dp(3).toFloat(), 1f)
+                                setPadding(ui.dp(24), ui.dp(16), ui.dp(24), ui.dp(16))
+                                setTextIsSelectable(true)
+                            }
+                        val scroll = ScrollView(this).apply { addView(body) }
+                        val dialog =
+                            MaterialAlertDialogBuilder(this)
+                                .setTitle(label)
+                                .setView(scroll)
+                                .setPositiveButton("閉じる", null)
+                                .create()
+                        dialog.setOnShowListener {
+                            scroll.layoutParams =
+                                scroll.layoutParams.apply {
+                                    height = (resources.displayMetrics.heightPixels * .6f).toInt()
+                                }
                         }
-                    )
-                }
+                        dialog.show()
+                    }
+                )
+            }
         }
         search.addTextChangedListener(
             object : TextWatcher {

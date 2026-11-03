@@ -58,6 +58,7 @@ object RootRunner {
             .putLong("last_at", System.currentTimeMillis())
             .putString("last_operation", operation)
             .putBoolean("last_success", result.success)
+            .putString("last_connection", result.open?.toString() ?: "unknown")
             .apply()
         return result
     }
