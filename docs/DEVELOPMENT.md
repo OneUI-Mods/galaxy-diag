@@ -33,3 +33,7 @@ The script runs checks, signs only the release variant, verifies the pinned cert
 ## Validation
 
 Protocol tests cover fixed bytes, remote/local QRTR discrimination, both endpoints, malformed input, shell path quoting and bounded retries. Physical test notes belong in `VALIDATION.md`; a scheduled job or code inspection is not proof of a real reboot test. Never reboot the OS/SystemUI/modem to satisfy a test without separate authorization.
+
+## CPU・メモリ効率
+
+[変更内容と検証範囲](efficiency.md)を参照してください。

@@ -1,11 +1,10 @@
 package dev.ryuya.galaxydiag
 
 import android.content.Context
-import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 object RootRunner {
-    val executor = Executors.newSingleThreadExecutor()
+    val executor = BackgroundExecutors.serial("GalaxyDiagCommands")
 
     fun prefs(context: Context) = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
