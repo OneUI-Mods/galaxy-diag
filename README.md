@@ -1,5 +1,7 @@
 # Galaxy DIAG
 
+[日本語](README.md) · [English](README.en.md)
+
 Galaxyのモデム測定接続を準備するrootアプリです。アプリを開いた時にDIAG許可を送り、モデムの接続口が使える状態になったことを確認します。「NSGを開く」からNetwork Signal Guruを起動できます。
 
 ## 対応環境
