@@ -15,7 +15,7 @@ class BootReceiver : BroadcastReceiver() {
                 intent.action != Intent.ACTION_MY_PACKAGE_REPLACED
         )
             return
-        if (RootRunner.prefs(context).getBoolean("auto_boot", false)) schedule(context, 0)
+        if (RootRunner.prefs(context).getBoolean("auto_boot", true)) schedule(context, 0)
     }
 
     companion object {
@@ -30,7 +30,7 @@ class BootReceiver : BroadcastReceiver() {
                         .setMinimumLatency(if (attempt == 0) 15_000 else 30_000)
                         .setOverrideDeadline(120_000)
                         .setExtras(extras)
-                        .build()
+                        .build(),
                 )
         }
     }

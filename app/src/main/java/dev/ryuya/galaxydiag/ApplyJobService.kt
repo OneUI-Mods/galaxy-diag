@@ -12,7 +12,7 @@ class ApplyJobService : JobService() {
     private val handler = Handler(Looper.getMainLooper())
 
     override fun onStartJob(params: JobParameters): Boolean {
-        if (!RootRunner.prefs(this).getBoolean("auto_boot", false)) return false
+        if (!RootRunner.prefs(this).getBoolean("auto_boot", true)) return false
         stopped = false
         work =
             RootRunner.executor.submit {
@@ -25,7 +25,7 @@ class ApplyJobService : JobService() {
                         !result.success &&
                             DiagProtocol.shouldRetry(
                                 attempt,
-                                RootRunner.prefs(this).getBoolean("auto_boot", false),
+                                RootRunner.prefs(this).getBoolean("auto_boot", true),
                             )
                     ) {
                         BootReceiver.schedule(this, attempt + 1)

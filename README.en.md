@@ -4,6 +4,10 @@
 
 A root app that prepares Galaxy modem-measurement connectivity. Opening it sends the DIAG permission request and verifies that the modem endpoint is usable. **Open NSG** launches Network Signal Guru.
 
+## Automatic startup after boot
+
+Automatic startup after device boot can be switched on or off in settings. The default is on when no choice has been saved; an existing off choice is preserved. Startup only restores configured behavior and does not override feature switches, permissions, or lock-state restrictions. Successfully preparing DIAG for the first time no longer overwrites an explicitly disabled startup setting.
+
 ## Requirements
 
 - Samsung Galaxy S26 Ultra **SM-S948Q / SM8850 / Android 17**.

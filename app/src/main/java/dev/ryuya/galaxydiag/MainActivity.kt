@@ -119,7 +119,7 @@ class MainActivity : AppCompatActivity() {
         automatic =
             MaterialSwitch(this).apply {
                 contentDescription = "端末起動時に自動適用"
-                isChecked = RootRunner.prefs(this@MainActivity).getBoolean("auto_boot", false)
+                isChecked = RootRunner.prefs(this@MainActivity).getBoolean("auto_boot", true)
                 setOnCheckedChangeListener { _, checked ->
                     RootRunner.prefs(this@MainActivity)
                         .edit()
@@ -133,7 +133,7 @@ class MainActivity : AppCompatActivity() {
         autoCard.addView(
             ui.row("起動時に自動適用", "端末の起動後に一度だけ適用", R.drawable.ic_auto, trailing = automatic) {
                 if (!busy) automatic.isChecked = !automatic.isChecked
-            }
+            },
         )
         content.addView(autoCard)
         content.addView(
@@ -146,13 +146,13 @@ class MainActivity : AppCompatActivity() {
         ui.section(content, "その他")
         val other = ui.column()
         other.addView(
-            ui.row("DIAG許可を解除", null, R.drawable.ic_power, danger = true) { confirmDisable() }
+            ui.row("DIAG許可を解除", null, R.drawable.ic_power, danger = true) { confirmDisable() },
         )
         other.addView(ui.divider())
         other.addView(
             ui.row("ライセンス", null, R.drawable.ic_document) {
                 startActivity(Intent(this, LicensesActivity::class.java))
-            }
+            },
         )
         val otherCard = ui.card()
         otherCard.addView(other)
@@ -221,7 +221,7 @@ class MainActivity : AppCompatActivity() {
         MaterialAlertDialogBuilder(this)
             .setTitle("Galaxy DIAG ${BuildConfig.VERSION_NAME}")
             .setMessage(
-                "GalaxyのDIAG接続を準備するrootアプリです。\n\n対応確認：SM-S948Q / Android 17\n\n初回はKernelSUなどのroot管理アプリでGalaxy DIAGを許可してください。常駐・定期通信は行いません。Samsung側が許可を閉じた場合は再適用できます。"
+                "GalaxyのDIAG接続を準備するrootアプリです。\n\n対応確認：SM-S948Q / Android 17\n\n初回はKernelSUなどのroot管理アプリでGalaxy DIAGを許可してください。常駐・定期通信は行いません。Samsung側が許可を閉じた場合は再適用できます。",
             )
             .setNeutralButton("外観") { _, _ -> showAppearance() }
             .setPositiveButton("閉じる", null)
@@ -274,13 +274,19 @@ class MainActivity : AppCompatActivity() {
             val result = RootRunner.run(applicationContext, operation)
             val prefs = RootRunner.prefs(applicationContext)
             if (result.success && operation == "enable" && !prefs.getBoolean("initialized", false))
-                prefs.edit().putBoolean("auto_boot", true).putBoolean("initialized", true).apply()
+                prefs
+                    .edit()
+                    .apply {
+                        if (!prefs.contains("auto_boot")) putBoolean("auto_boot", true)
+                        putBoolean("initialized", true)
+                    }
+                    .apply()
             runOnUiThread {
                 if (isDestroyed) return@runOnUiThread
                 busy = false
                 actions.forEach { it.isEnabled = true }
                 automatic.isEnabled = true
-                automatic.isChecked = prefs.getBoolean("auto_boot", false)
+                automatic.isChecked = prefs.getBoolean("auto_boot", true)
                 progress.visibility = View.GONE
                 showSaved()
                 if (launchNsg && result.success && result.open == true) {
