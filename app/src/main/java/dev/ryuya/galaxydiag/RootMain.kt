@@ -3,7 +3,6 @@ package dev.ryuya.galaxydiag
 import android.os.Build
 import android.os.IBinder
 import android.system.Os
-import java.util.concurrent.TimeUnit
 import kotlin.system.exitProcess
 
 /** Short-lived privileged entry point in the signed APK; never a daemon. */
@@ -54,12 +53,9 @@ object RootMain {
             for (attempt in 0 until attempts) {
                 val proc =
                     ProcessBuilder("/vendor/bin/qrtr-lookup").redirectErrorStream(true).start()
-                if (!proc.waitFor(5, TimeUnit.SECONDS)) {
-                    proc.destroyForcibly()
-                    error("QRTR_TIMEOUT")
-                }
-                val text = proc.inputStream.bufferedReader().use { it.readText() }
-                check(proc.exitValue() == 0) { "QRTR_FAILED" }
+                val response = CommandOutput.collect(proc, 5_000, 1_048_576)
+                check(response.code == 0) { "QRTR_FAILED" }
+                val text = response.text
                 val open = DiagProtocol.hasMpssEndpoints(text)
                 if (
                     operation == "status" ||

@@ -1,7 +1,6 @@
 package dev.ryuya.galaxydiag
 
 import android.content.Context
-import java.util.concurrent.TimeUnit
 
 object RootRunner {
     val executor = BackgroundExecutors.serial("GalaxyDiagCommands")
@@ -20,15 +19,15 @@ object RootRunner {
                 val command =
                     "CLASSPATH=$apk /system/bin/app_process /system/bin dev.ryuya.galaxydiag.RootMain $operation"
                 process = ProcessBuilder("su", "-c", command).redirectErrorStream(true).start()
-                check(process.waitFor(70, TimeUnit.SECONDS)) { "ROOT_TIMEOUT" }
-                val output = process.inputStream.bufferedReader().use { it.readText().take(8192) }
+                val response = CommandOutput.collect(process, 70_000, 32_768)
+                val output = response.text
                 val open =
                     when {
                         "MPSS_OPEN=true" in output -> true
                         "MPSS_OPEN=false" in output -> false
                         else -> null
                     }
-                val success = process.exitValue() == 0 && open != null
+                val success = response.code == 0 && open != null
                 val message =
                     when {
                         success && open == true -> "MPSS接続を確認しました。NSGで測定できます。"
