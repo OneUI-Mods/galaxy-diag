@@ -1,6 +1,6 @@
 # Development
 
-The Android app and privileged entry point are Kotlin. Build with JDK 21, Android SDK 37.0 / Build Tools 37.0.0, and the checked-in Gradle wrapper.
+The Android app and privileged entry point are Kotlin. Build with JDK 27, Android SDK 37.0 / Build Tools 37.0.0, and the checked-in Gradle wrapper.
 
 ```sh
 ./gradlew :app:testDebugUnitTest :app:lintRelease :app:assembleRelease :app:writeRuntimeDependencies
@@ -37,3 +37,5 @@ Protocol tests cover fixed bytes, remote/local QRTR discrimination, both endpoin
 ## CPU・メモリ効率
 
 [変更内容と検証範囲](efficiency.md)を参照してください。
+
+[Build environment / ビルド環境](build-environment.md)

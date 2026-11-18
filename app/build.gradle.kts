@@ -2,7 +2,9 @@ plugins { id("com.android.application") }
 
 android {
     namespace = "dev.ryuya.galaxydiag"
-    compileSdk = 37
+    compileSdk {
+        version = release(37) { minorApiLevel = 2 }
+    }
     buildToolsVersion = "37.0.0"
     defaultConfig {
         applicationId = "dev.ryuya.galaxydiag"

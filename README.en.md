@@ -36,3 +36,5 @@ The connection card shows preparation status and provides **Open NSG**. Reapply/
 There is no resident service, periodic monitoring, or app-specific network communication. Root helpers run only during operations and exit afterward. DIAG permission and NSG's own measurement/logging are separate; stop NSG when finished. Long-term battery use with DIAG enabled has not been measured.
 
 Licenses are searchable in the app. The project uses the [MIT License](LICENSE). Development, signing, and validation are in the [developer guide (Japanese)](docs/DEVELOPMENT.md).
+
+[Build environment / ビルド環境](docs/build-environment.md)
