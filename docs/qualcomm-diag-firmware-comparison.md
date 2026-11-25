@@ -4,7 +4,9 @@
 
 対象: Galaxy DIAG `51e9e4e`、Samsung Android 17 純正ファームウェア
 
-手法: 読み取り専用の取得・展開・静的解析。端末、NV/EFS、モデム、セキュリティ状態は変更していない。
+手法: FWは読み取り専用で取得・展開・静的解析した。S26実機ではCP User Logを一度OFF→ONにし、
+QRTR登録を100 ms間隔で記録した。NV/EFS書換え、モデム/OS再起動、セキュリティ設定変更は行わず、
+調査後はDIAG公開状態と前面アプリを開始前へ戻した。
 
 ## 結論
 
@@ -45,11 +47,22 @@
 12. 同一リリースのS26 Ultra BZI9では、SJP/DCMのAP側7ファイルが全て一致し、CPの主要segmentも
     `modem.b00`〜`b26`が一致する。一方、`b27`、`qdsp6_oemsw.mbn`、RF/HW MCFGは異なる。
     これはリージョン共通のQualcomm MPSS本体と、機種・無線構成別OEM層を分離した構成を示す。
+13. S26実機でロックされている対象を確定した。OFF時にもMODEMのservice 4097
+    `CNTL`/`DATA`/`DCI`（instance 0/2/4）は残り、`CMD`/`DCI_CMD`（instance 1/3）だけが消える。
+    OEM ONでは要求から約0.87秒後にinstance 1/3が登録され、OFFでは約0.99秒後に同じ2本だけが
+    解除された。制御点はAPの`diag-router`ではなく、CP側のcommand endpoint登録である。
+14. 解放後のS26実機へ通常のEFS2 DIAG commandで接続し、
+    `/nv/item_files/diag/diag_encrypt`が存在しない（EFS errno 2）ことを確認した。従って少なくとも
+    この実機状態では、Galaxy DIAG成功を同ファイルの復号設定変更では説明できない。
+15. S26 SJP/DCMの`qdsp6m.qdb`はGUIDとrecord順序こそ異なるが、全74,458件をtoken列を除いて
+    正規化・sortすると完全一致した。`oemapi_misc.c:9731`の`status : %d`も両方ともhash
+    `124124`である。CP OEM binaryの大差をそのまま機能差と数えることはできず、少なくとも
+    QShrinkのsource/log定義は同一である。
 
 ### 有力な推定
 
-- S26 Ultraで0xb0成功後にservice 4097 instance 1/3が現れるため、CP User Logモードが
-  MPSSのDIAG CMD/DCI_CMD公開状態を変更している可能性が高い。
+- S26 SJP/DCMのCP OEM handlerは同じsource/log構成を持つため、DCM側に差がある場合は
+  handlerの有無ではなく分岐定数、factory EFS/NV、RF/HW feature入力の可能性が高い。
 - SC-54Eは要求前から同じエンドポイントを公開しているため、`INTERNAL_ERR` は
   「既に公開済みの状態でSETを拒否」「CP世代固有の状態機械」「CP側の一般エラー」の
   いずれかである可能性が高い。AP側のモデル/CSC拒否という旧仮説より証拠に合う。
@@ -63,7 +76,7 @@
 
 - SC-54EのCPが0xb0に対して返したraw IPCエラー値と、その分岐条件。
 - 直販SM-F741Q、S24 Ultra、S25 Ultraの実機初期公開状態と0xb0の結果。
-- S26 Ultraで全DIAGログが平文になるのか、一部のsecure logだけ別処理を要するのか。
+- S26 Ultraで全async DIAGログが平文になるのか、一部のsecure logだけ別処理を要するのか。
 - NSGが `SECURITY_KEY_LIST` を動的生成して鍵情報を取得するか。APK内に固定要求列はなく、
   暗号関連コードとfield-name文字列だけでは復号実装の証拠にならない。
 - ブートローダー、Verified Boot、Knox Warranty Bitが別のDIAG経路へ与える影響。
@@ -78,7 +91,7 @@
 | **Z Flip6 / X75** | SM-F741Q EZJD | SC-54E EZIH | 対象7ファイルは全て一致 | MPSS Build IDは同じ。CP/OEM SWはビルド日差で異なる。DCM carrier MCFGの意味内容は一致しDIAG項目なし | DCM実機は初期公開・0xb0は`-37`。SJP実機状態はFUSだけからは決まらない |
 | **S24 Ultra / X75** | SM-S928Q EZK2 | SC-52E EZIF | 対象7ファイルは全て一致 | CP/OEM SWはビルド日差で異なる。DCM carrier MCFGの意味内容は一致しDIAG項目なし。両方にX75 Secure Logging実装あり | 両方ともfactory EFSがFUSに含まれないため、初期ON/OFFは静的FWからは決まらない |
 | **S25 Ultra / X80** | SM-S938Q DZIF | SC-52F DZIF | 対象7ファイルは全て一致 | MPSS Build IDは同一。SJP/DCMでCP本体・OEM SW・RF構成に差。DCM carrier MCFGの意味内容は一致しDIAG項目なし | factory EFSがFUSに含まれないため、初期ON/OFFは静的FWからは決まらない |
-| **S26 Ultra / X85** | SM-S948Q BZI9 | SC-53G BZI9 | 対象7ファイルは全て一致 | MPSS Build ID同一、`b00`〜`b26`一致。OEM `b27`/`qdsp6_oemsw`とRF構成は別。DCM carrier MCFGの意味内容は一致 | SJP実機は初期非公開→0xb0で公開・NSG可。DCMのfactory EFS状態はFUSにはない |
+| **S26 Ultra / X85** | SM-S948Q BZI9 | SC-53G BZI9 | 対象7ファイルは全て一致 | MPSS Build ID同一、`b00`〜`b26`一致。OEM `b27`/`qdsp6_oemsw`とRF構成は別だが、OEM QDB 74,458件の意味内容は一致。DCM carrier MCFGの意味内容も一致 | SJP実機はCMD/DCI_CMDだけ初期非公開→0xb0で公開・NSG可。実機`diag_encrypt`は不在。DCMのfactory EFS状態はFUSにはない |
 
 この表は日本向けSJP/DCMだけを扱う。海外版の推測は比較対象から除外した。
 
@@ -246,6 +259,86 @@ strb  w19, [sp, #7]
 
 little endianの実データは `08 00 00 00 0a 7a 03 <mode>` になる。
 正式な各CP IPCフィールド名は公開ヘッダで確認できていないため、値以上の命名は行わない。
+
+## S26実機で確定したCP側の公開制御
+
+対象はSM-S948Q / SJP / `S948QOPU1BZI9`、SELinux Enforcing、ブートローダーロック状態である。
+Galaxy DIAG 0.2.4のOEM ON/OFFを各1回だけ実行し、`qrtr-lookup 4097`と`diag-router`ログを
+同時に記録した。端末、SystemUI、RIL、モデムの再起動は行っていない。
+
+### OFF状態
+
+OFFでもデータ経路全体が消えるわけではなく、次の3本はAPと同じnode 1上に残った。
+
+```text
+instance 0  node 1  MODEM:CNTL
+instance 2  node 1  MODEM:DATA
+instance 4  node 1  MODEM:DCI
+```
+
+一方、EFS2 commandを送るために必要なCMD endpointがないため、rootやAF_QIPCRTR socketが
+利用可能でもEFS commandは送れなかった。これは「service 4097が1本でも見えればDIAG公開済み」
+という判定が誤りであることも示す。
+
+### OEM ON
+
+```text
+21:17:28.191  SEM_RILJ  OEM_HOOK_RAW[11B0000501]
+21:17:28.191  RILD      DoOemSetCpUserLog - status : 1
+21:17:29.064  Diag-Router  new server on cmd channel
+21:17:29.067  Diag-Router  new server on dci cmd channel
+```
+
+要求から約0.87秒後、次の2本だけがnode 0へ新規登録された。portは再登録のたびに変わるため
+policy値ではなくruntime割当である。
+
+```text
+instance 1  node 0  MODEM:CMD
+instance 3  node 0  MODEM:DCI_CMD
+```
+
+`diag-router`はNEW_SERVER通知を受けてから接続・diag-id交換を開始しており、公開を作る側ではない。
+
+### OEM OFF
+
+```text
+21:16:45.350  SEM_RILJ  OEM_HOOK_RAW[11B0000500]
+21:16:45.357  RILD      DoOemSetCpUserLog - status : 0
+21:16:46.341  Diag-Router  DEL_SERVER / bye on cmd channel
+21:16:46.343  Diag-Router  bye on dci cmd channel
+```
+
+OFF要求から約0.99秒後にinstance 1/3だけが消え、CNTL/DATA/DCIは残った。従って5バイト要求は
+少なくともS26で**CPのCMD/DCI_CMD QRTR server登録を切り替える**。この事実は暗号鍵の取得、
+ログpayloadの復号、AP側ルーター起動とは別である。
+
+### 実機EFSと`diag_encrypt`
+
+ON後はMODEM:CMDへ通常のDIAG/EFS2 requestを送り、subsystem `0x13`で応答を得た。
+その状態で`/nv/item_files/diag/diag_encrypt`を`stat`/`GET`した結果はEFS errno 2、親directory
+`/nv/item_files/diag`も不存在だった。調査はread-onlyのまま行い、EFS/NVへ書き込んでいない。
+
+これはX75 binaryに同ファイルを読む実装があることと矛盾しない。ファイルがない場合は既定値のまま
+戻る分岐があり、X85実機ではその不在状態だった、という結果である。少なくとも今回のOEM ONで
+同ファイルが作成・変更された事実はなく、解放を「`diag_encrypt`の復号スイッチ」とする説明は棄却できる。
+
+### S26 SJP/DCM CP OEMの正規化比較
+
+`qdsp6_oemsw.mbn`自体はSJPとDCMで異なるが、raw byte差にはbuild番号、link配置、QShrink token順序が
+大量に含まれる。対応する`qdsp6m.qdb`を展開すると、両方ともQShrink 00.10.00、74,458件で、
+token/hash列を除いてsortしたrecord集合はbyte-for-byte一致した。
+
+```text
+Content          40,548
+MtraceContent    33,207
+QtraceStrContent    703
+total            74,458
+```
+
+`oemapi_misc_user_log_set`近傍も両方に存在し、`oemapi_misc.c:9731`の`status : %d`は同じhash
+`124124`である。この段階で確定できるのは「source/log定義は同一」であり、handler machine codeの
+分岐定数まで同一とはまだ断定しない。PT_NULL扱いのHexagon code segmentをGhidraへ追加mapし、
+同handlerの逆コンパイル比較を継続している。
 
 ## ドコモ版Flip6と直販Flip6のバイナリ比較
 
@@ -541,10 +634,23 @@ mbn-tool -e \
   mcfg-dcm
 diff -ru mcfg-sjp/parsed_nv_files mcfg-dcm/parsed_nv_files
 diff -ru mcfg-sjp/parsed_nv_items mcfg-dcm/parsed_nv_items
+python3 tools/compare_cp_oem_elf.py \
+  s26-sjp/image/modem_oem/qdsp6_oemsw.mbn \
+  s26-dcm/image/modem_oem/qdsp6_oemsw.mbn
+qdb dump s26-sjp/image/modem_oem/qdsp6m.qdb | cut -f2- | LC_ALL=C sort > sjp.qdb.sorted
+qdb dump s26-dcm/image/modem_oem/qdsp6m.qdb | cut -f2- | LC_ALL=C sort > dcm.qdb.sorted
+cmp sjp.qdb.sorted dcm.qdb.sorted
 /opt/homebrew/opt/ghidra/libexec/support/analyzeHeadless PROJECTS Flip6Diag \
   -import cp/modem-files/image/modem.mdt \
   -scriptPath tools/ghidra \
   -postScript DiagStringXrefs.java
+/opt/homebrew/opt/ghidra/libexec/support/analyzeHeadless PROJECTS S26OemFull \
+  -import s26-sjp/image/modem_oem/qdsp6_oemsw.mbn \
+  -scriptPath tools/ghidra \
+  -preScript MapEmbeddedExecutableSegments.java \
+    s26-sjp/image/modem_oem/qdsp6_oemsw.mbn \
+    0xc2fc80:0x38000000:0x7a3ab4 \
+    0x13d3734:0x3c000000:0x3d16fc
 ```
 
 `tools/extract_lp_partition.py` はSamsungの巨大なsuper全体を別コピーせず、指定partitionのextent
@@ -573,4 +679,6 @@ diff -ru mcfg-sjp/parsed_nv_items mcfg-dcm/parsed_nv_items
 - [qcom-band-menu](https://github.com/Fronsipswu/qcom-band-menu/tree/cddebf02c69f1dda021cf8d61f1a096fc2242278)
 - [qcom-band-menu releases](https://github.com/Fronsipswu/qcom-band-menu/releases)
 - [qcom-efs-browser](https://github.com/catxeon/qcom-efs-browser/tree/2cb426f655a525776726bcd360c30451c6e92c89)
+- [go-qshrink4](https://github.com/W-Floyd/go-qshrink4)
+- [QDig](https://github.com/NerdTIV/QDig)
 - [Quectel QLog DIAG command definitions](https://github.com/quectel-official/QLog/blob/main/diagcmd.h)
