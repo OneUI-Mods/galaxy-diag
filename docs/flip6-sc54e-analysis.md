@@ -53,3 +53,28 @@ S26（直販/楽天 SJP）は通り、Galaxy DIAG が成立した。SC-54E は *
 
 A が最も筋が良いが、どれも SC-54E 実機（root + adb）での検証が前提。実機が用意できたら
 RIL ログで分岐を確定し、A を実装・検証する。
+
+## 追補：トランスポートは動作、不足はモデム側の DIAG 公開
+
+vendor を展開して確認した結果、QRTR のトランスポート側は動いている。
+
+- `vendor/etc/init/vendor.qti.diag.rc`：`on early-boot start vendor.diag-router`。
+  Qualcomm の `diag-router`（`/vendor/bin/diag-router`）が起動し、QRTR に DIAG を中継する。
+- RIL には `IpcTxExecDiagScan` / `IpcRxServiceModeDiagScan` / `ModemProxy::ExecDiagScan` があり、
+  Service mode 経由の DIAG scan を持つ。
+
+したがって不足しているのは **モデム（MPSS）側が DIAG の CMD / DCI エンドポイントを QRTR に
+公開していない**こと。Samsung は出荷時にこれを閉じ、OEM domestic command（`11 b0 00 05 01`）で
+開く。ドコモ（DCM）の sales code ではこの domestic command が通らないため、endpoint が
+公開されず、`qrtr-lookup` に MODEM:CMD(instance1,node0) / DCI_CMD(instance3,node0) が現れない。
+
+## 回避の方向（更新、実機未検証）
+
+- **A'（最有力）**：Samsung OEM RIL を経由せず、Qualcomm 標準の手段でモデムの DIAG を開く。
+  root で `diag_mdlog` / DIAG マスク設定 / 関連 NV・EFS を使って MPSS の DIAG を有効化できれば、
+  sales code ゲートを通らずに CMD/DCI endpoint を公開できる可能性がある。NSG はその QRTR/
+  `/dev/diag` を使う。Galaxy DIAG 側は、RIL 送信の代わりにこの経路を叩く実装に差し替える。
+- B（他の domestic サブコマンド）/ C（sales code 変更）は前述。C は副作用大で非推奨。
+
+いずれも SC-54E 実機（root + adb）での検証が前提。実機の `adb logcat` RIL ログで -37 の分岐を
+確定し、A' が MPSS endpoint を公開できるか実機で確認してから実装する。
