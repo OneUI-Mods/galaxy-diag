@@ -58,11 +58,14 @@ QRTR登録を100 ms間隔で記録した。NV/EFS書換え、モデム/OS再起�
     正規化・sortすると完全一致した。`oemapi_misc.c:9731`の`status : %d`も両方ともhash
     `124124`である。CP OEM binaryの大差をそのまま機能差と数えることはできず、少なくとも
     QShrinkのsource/log定義は同一である。
+16. 上記hashを参照するCP handlerはSJP/DCMとも`0x386e9a58`の同一関数で、命令列と
+    逆コンパイル結果も同一だった。requestの`+0x1c`からmodeを読み、初回または値変更時に同じ
+    再計算処理へ進む。SJP/DCM差をこのhandlerのリージョン分岐や実装欠落では説明できない。
 
 ### 有力な推定
 
-- S26 SJP/DCMのCP OEM handlerは同じsource/log構成を持つため、DCM側に差がある場合は
-  handlerの有無ではなく分岐定数、factory EFS/NV、RF/HW feature入力の可能性が高い。
+- S26 SJP/DCMのCP OEM handlerは同じ実装であるため、DCM側に差がある場合はhandlerの有無や
+  分岐定数ではなく、factory EFS/NV、起動時の永続状態、RF/HW feature入力の可能性が高い。
 - SC-54Eは要求前から同じエンドポイントを公開しているため、`INTERNAL_ERR` は
   「既に公開済みの状態でSETを拒否」「CP世代固有の状態機械」「CP側の一般エラー」の
   いずれかである可能性が高い。AP側のモデル/CSC拒否という旧仮説より証拠に合う。
@@ -336,9 +339,43 @@ total            74,458
 ```
 
 `oemapi_misc_user_log_set`近傍も両方に存在し、`oemapi_misc.c:9731`の`status : %d`は同じhash
-`124124`である。この段階で確定できるのは「source/log定義は同一」であり、handler machine codeの
-分岐定数まで同一とはまだ断定しない。PT_NULL扱いのHexagon code segmentをGhidraへ追加mapし、
-同handlerの逆コンパイル比較を継続している。
+`124124`である。さらに、PT_NULL扱いのHexagon実行segmentをGhidraへ追加mapし、同hashの唯一の
+参照元をSJP/DCMで独立に探索した結果、両方とも次の同じ場所・同じ命令へ到達した。
+
+```text
+function entry  0x386e9a58
+hash reference  0x386e9a8c
+instruction     combine R1R0,R17,##0xf60f26e0
+QShrink hash    124124 (oemapi_misc.c:9731, "status : %d")
+```
+
+逆コンパイル結果もSJP/DCMで同一であり、相違はログ用data pointerの配置だけだった。処理本体は、
+null requestなら`0x8001`、通常は`0x8000`を返す。requestの`+0x14`が0の場合に`+0x1c`の1-byte
+modeを読み、前回値と異なるか初回なら`0x38236fc0`を呼び、その後GP相対`+0x4dd`へmodeを保存する。
+
+```c
+if (request == NULL) return 0x8001;
+result = 0x8000;
+if (*(int8_t *)(request + 0x14) == 0) {
+    mode = *(int8_t *)(request + 0x1c);
+    log("status : %d", mode);
+    if (initialized == 0 || cp_user_log_mode != mode) {
+        FUN_38236fc0();
+        initialized = 1;
+    }
+    cp_user_log_mode = mode;
+}
+return result;
+```
+
+従って、S26 BZI9のSJP/DCM間では、少なくともCP User Log要求の受付、mode offset、初回・変更時判定、
+状態保存、再計算処理への入口まで完全に同じである。SJP実機の初期非公開状態を、このhandlerの
+リージョン別分岐やDCM固有の命令欠落で説明することはできない。差を作り得る残りの候補は、同handlerが
+参照する永続/製品状態、factory EFS、または起動時に設定される別のCP状態である。
+
+`0x38236fc0`以降には遅延処理と複数の製品状態を合成する処理があることまで確認したが、ユーザーの指示に
+よりここで解析を停止した。最終的なQRTR server登録関数の命名と各bitの正式名称は未解析であり、推測で
+補っていない。
 
 ## ドコモ版Flip6と直販Flip6のバイナリ比較
 
