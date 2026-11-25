@@ -78,3 +78,34 @@ vendor を展開して確認した結果、QRTR のトランスポート側は�
 
 いずれも SC-54E 実機（root + adb）での検証が前提。実機の `adb logcat` RIL ログで -37 の分岐を
 確定し、A' が MPSS endpoint を公開できるか実機で確認してから実装する。
+
+## 追補2：回避 A' を実機で試す具体手順（未検証）
+
+Flip6 直販版 vendor には Qualcomm 標準の DIAG ツールが揃っている：
+`/vendor/bin/diag_mdlog`、`diag_dci_sample`、`diag_callback_sample`、`qrtr-lookup`、`qrtr-cfg`。
+
+Galaxy DIAG の成立条件（`DiagProtocol.hasMpssEndpoints`）は、`qrtr-lookup` に
+MODEM:CMD（instance 1）と DCI_CMD（instance 3）の両方が現れること。
+Samsung OEM domestic command はこの 2 つを公開するために使われ、ドコモでは弾かれる。
+
+RIL / sales code を経由しない代替として、root で Qualcomm の DIAG を直接叩く：
+
+```sh
+# 中継は early-boot で起動済みのはず。念のため確認
+su -c 'getprop | grep -i diag-router'
+su -c 'qrtr-lookup | grep -iE "MODEM|DCI"'      # 現状 instance1/3 が無いことを確認
+
+# Qualcomm 標準の DIAG セッションでモデムの DIAG をサブスクライブ
+su -c '/vendor/bin/diag_mdlog -f /data/local/tmp -s 50 &'   # CMD 経路
+su -c '/vendor/bin/diag_dci_sample &'                        # DCI 経路
+
+su -c 'qrtr-lookup | grep -iE "MODEM|DCI"'      # instance1/3 が出るか再確認
+```
+
+`qrtr-lookup` に instance 1 と 3 が現れれば、NSG はその DIAG を使える。
+その場合、Galaxy DIAG 側は OEM RIL 送信をやめ、この diag ツール起動経路に差し替える
+（A' 実装）。現れなければ、モデムが sales code を内部でも参照して endpoint を閉じており、
+ドコモでは RIL 回避のみでは開かない結論になる（その時は B/C を検討）。
+
+**注意**：いずれも SC-54E 実機（root + adb）が必要。DIAG を開くと端末の通信ログが外部へ
+出せる状態になるため、検証時以外は開かない。実機が用意でき次第この手順で切り分ける。
