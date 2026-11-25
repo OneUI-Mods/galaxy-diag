@@ -17,8 +17,9 @@
    `<mode>` は有効化時 `01`、無効化時 `00` である。
 3. SC-54Eがアプリへ返す `-37` はLinux errnoでもraw RIL errnoでもない。
    `ISemTelephony` が `CommandException.Error.INTERNAL_ERR.ordinal()` を負数化した値である。
-4. ドコモ版SC-54E EZIHと直販版SM-F741Q EZJDでは、比較対象のAP側DIAG/RIL実行物が
-   SHA-256まで一致した。少なくとも「DCM版AP RILに0xb0が未実装」は否定できる。
+4. 日本直販SJPとドコモDCMの比較対象AP側DIAG/RIL実行物は、Flip6、S24 Ultra、
+   S25 Ultra、S26 Ultraの全4世代でSHA-256まで一致した。少なくとも「DCM版AP RILだけ0xb0が未実装」や
+   「SJP/DCMでdiag-routerの起動設定が違う」という説明は否定できる。
 5. `diag-router` は両Flip6でearly-bootから同一設定で起動する。これはAP側の転送路であり、
    MPSSがQRTR service 4097を登録するかどうかを単独では決めない。
 6. Galaxy DIAG自身は鍵取得、認証、復号、DIAG中継、NV/EFS書換え、カーネル変更を行わない。
@@ -34,6 +35,16 @@
    `DoOemSetCpUserLog`、CP IPC `08 00 00 00 0a 7a 03 <mode>` がある。さらにS24 X75 CPにも
    Flip6と同じSecure Logging実装がある。したがって「S24 Ultraは暗号化される」という報告を、
    X75世代やAP側コマンド欠落だけで説明することはできない。
+10. X75の実装をGhidraで追跡し、`/nv/item_files/diag/diag_encrypt` の値0〜3を
+    2系統の内部security設定へ変換することを確認した。ファイルが存在しない場合は
+    `Config file does not exist`を記録して設定を変更せず戻る。個々の値の正式名称は
+    シンボルがないため断定しないが、実行時状態が端末固有のモデムEFSに依存することは確定した。
+11. Flip6、S24、S25、S26のAPAC/DCM carrier MCFGをSJPパッケージとDCMパッケージの双方から
+    展開した。`parsed_nv_files` と `parsed_nv_items` は各世代で完全一致し、
+    `diag_encrypt` やDIAG公開設定は含まれない。DCM carrier MCFGは今回の差の制御点ではない。
+12. 同一リリースのS26 Ultra BZI9では、SJP/DCMのAP側7ファイルが全て一致し、CPの主要segmentも
+    `modem.b00`〜`b26`が一致する。一方、`b27`、`qdsp6_oemsw.mbn`、RF/HW MCFGは異なる。
+    これはリージョン共通のQualcomm MPSS本体と、機種・無線構成別OEM層を分離した構成を示す。
 
 ### 有力な推定
 
@@ -57,24 +68,27 @@
   暗号関連コードとfield-name文字列だけでは復号実装の証拠にならない。
 - ブートローダー、Verified Boot、Knox Warranty Bitが別のDIAG経路へ与える影響。
 
-## 機種・販売地域別の判定表
+## SJP直販版とドコモDCM版の比較表
 
-凡例: **実機確認**は物理端末で確認、**静的確認**は純正FW内に実装があるだけ、`?`は未確認。
-「Secure Logging実装あり」と「実行時に暗号化ON」は別の列である。
+実機結果と静的FW解析は分けて記載する。「Secure Logging実装あり」と
+「その端末で実行時に暗号化ON」は別の状態である。
 
-| 機種 | 販売地域/CSC | SoC/モデム | 初期DIAG endpoint | 0xb0 CP User Log | DIAG/NSG利用 | Secure Logging実装 | 実行時のasync log暗号化 | 現時点の判定 |
-|---|---|---|---|---|---|---|---|---|
-| **SM-S948Q S26 Ultra** | 日本直販/SJP | SM8850/X85 | **非公開（実機）** | **成功、公開へ移行（実機）** | 0xb0後にNSG LTE詳細、EFS command/replyも利用可 | S26 CPでは名称を静的確定できず | **?** 必要ログが読めることだけ確定 | **初期ロックあり。ただしSJPリージョン起因か機種起因か未分離** |
-| **SC-54E / SM-F741D Flip6** | ドコモ/DCM | SM8650/X75 | **公開済み（実機）** | **`-37 INTERNAL_ERR`（実機）** | Galaxy DIAGなしでNSG動作 | **あり（静的）** | **?** | **ロックなし。setter失敗は公開状態と別問題** |
-| **SM-F741Q Flip6** | 日本直販/SJP | SM8650/X75 | **?** | **?** AP側実装はあり | **?** | **あり（静的）** | **?** | **実機未確認。DCMと同じ挙動とは扱わない** |
-| **SM-S928Q S24 Ultra** | 日本直販/SJP | SM8650/X75 | **?** | **?** AP側実装と同一CP IPCはあり | **?** | **あり（静的）** | **?** | **FWだけではロック/暗号化ONを判定不可** |
-| SM-S928B S24 Ultra | 欧州/Global | SM8650/X75 | **?** | **?** | **?** | 世代として実装能力あり | **?** | 公開報告だけではbuild・初期状態を特定不能 |
-| SM-S928U/U1 S24 Ultra | 米国carrier/unlocked | SM8650/X75 | **?** | **?** | **?** | 世代として実装能力あり | **?** | 未検証 |
-| SM-S928N/0 S24 Ultra | 韓国/中国・香港 | SM8650/X75 | **?** | **?** | **?** | 世代として実装能力あり | **?** | 未検証 |
-| **SM-S938Q S25 Ultra** | 日本直販/SJP | SM8750/X80 | **?** | **?** | **?** | X80世代として実装能力あり | **?** | FW本体・実機とも未確認 |
-| SM-S938B/U/U1/N/0 S25 Ultra | Global/米国/韓国/中国 | SM8750/X80 | **?** | **?** | **?** | X80世代として実装能力あり | **?** | 未検証 |
+| 世代 | SJP直販 | ドコモDCM | AP側DIAG/RIL | CP/MCFG静的比較 | 実行時の結論 |
+|---|---|---|---|---|---|
+| **Z Flip6 / X75** | SM-F741Q EZJD | SC-54E EZIH | 対象7ファイルは全て一致 | MPSS Build IDは同じ。CP/OEM SWはビルド日差で異なる。DCM carrier MCFGの意味内容は一致しDIAG項目なし | DCM実機は初期公開・0xb0は`-37`。SJP実機状態はFUSだけからは決まらない |
+| **S24 Ultra / X75** | SM-S928Q EZK2 | SC-52E EZIF | 対象7ファイルは全て一致 | CP/OEM SWはビルド日差で異なる。DCM carrier MCFGの意味内容は一致しDIAG項目なし。両方にX75 Secure Logging実装あり | 両方ともfactory EFSがFUSに含まれないため、初期ON/OFFは静的FWからは決まらない |
+| **S25 Ultra / X80** | SM-S938Q DZIF | SC-52F DZIF | 対象7ファイルは全て一致 | MPSS Build IDは同一。SJP/DCMでCP本体・OEM SW・RF構成に差。DCM carrier MCFGの意味内容は一致しDIAG項目なし | factory EFSがFUSに含まれないため、初期ON/OFFは静的FWからは決まらない |
+| **S26 Ultra / X85** | SM-S948Q BZI9 | SC-53G BZI9 | 対象7ファイルは全て一致 | MPSS Build ID同一、`b00`〜`b26`一致。OEM `b27`/`qdsp6_oemsw`とRF構成は別。DCM carrier MCFGの意味内容は一致 | SJP実機は初期非公開→0xb0で公開・NSG可。DCMのfactory EFS状態はFUSにはない |
 
-この表で「暗号化されていない」と確定できるSamsung機種はまだない。NSGで値が見えることは、
+この表は日本向けSJP/DCMだけを扱う。海外版の推測は比較対象から除外した。
+
+「初期DIAG endpoint」と「実行時の暗号化ON/OFF」がFW欄から埋まらない箇所は、調査不足による
+単なる`?`ではない。Ghidraで特定した通り、X75ではモデムEFSの
+`/nv/item_files/diag/diag_encrypt`を起動時に読み、そのファイルはFUSのAP/CP/CSCへ含まれない。
+factory EFSの出荷値は純正FWアーカイブから復元できないため、同一バイナリでも端末の出荷設定・
+更新履歴で状態が変わり得る。これが静的解析で確定できる境界である。
+
+この表で「全async logが暗号化されていない」と確定できるSamsung機種はまだない。NSGで値が見えることは、
 全async logが平文である証明にならない。一方で「X80/X85だから全DIAGが暗号化」も誤りで、
 X85 S26では通常のEFS DIAG command/replyが実機で利用でき、公開プロジェクトもX80/X85を
 **without encryptionという条件付き**で対応している。
@@ -117,18 +131,19 @@ X85 S26では通常のEFS DIAG command/replyが実機で利用でき、公開プ
    MPSS build、service registration policyは別にできる。
 2. **CPの初期状態と永続設定** — `/nv/item_files/diag/diag_encrypt`、user-log状態、EFS/NVの
    出荷値や更新履歴がendpoint公開とsecure loggingを変え得る。
-3. **carrier/region MCFG** — DCM/SJPのCPとMCFGは実際に異なる。ただしFlip6のAP側RILは
-   byte-identicalなので、少なくともAP RILのsales-code分岐で0xb0を拒否する説明は否定された。
-   またSJP CPにもDCM/KDDI/SBMの複数carrier policyが同梱され、実行時に選択されるため、
-   ZIPのregion名だけから有効ポリシーを決めることもできない。
+3. **carrier/region MCFG** — 署名を含むMCFGファイル全体のhashはDCM/SJPで異なるが、
+   各世代のDCM profileを展開した意味内容は完全一致し、DIAG項目もない。さらに全4世代の
+   AP側RILは同一機種のSJP/DCMでbyte-identicalだった。従ってcarrier MCFGとAP sales-code分岐は、
+   今回観測したendpoint初期状態の直接原因ではない。
 4. **世代差** — X80/X85ではschemaや4-byte QRTR header等の変更があるが、世代だけで
    暗号化状態を決める証拠はない。
 5. **host tool差** — NSG、qcom-band-menu、qcom-efs-browserは要求するDIAG command/log IDが
    異なる。一つが読めることは、全DIAGログが平文であることを意味しない。
 
 したがって「ドコモだから公開」「S24だから暗号化」「X85だから暗号化」という単一軸の結論は、
-いずれも現時点の証拠を超える。確定できるのは、DCM/SJP Flip6のAP RILが同一である一方、
-CP/MCFGは異なること、そして実機結果はS26直販とSC-54Eの2台に限られることである。
+いずれも現時点の証拠を超える。確定できるのは、全4世代で同一機種のSJP/DCM AP経路が同一、
+carrier MCFGの意味内容も同一であり、差が残るのは機種別CP OEM層とFUS外のfactory EFSであること、
+そして実機結果はS26直販とSC-54Eの2台に限られることである。
 
 ## 取得したファームウェア
 
@@ -138,6 +153,10 @@ CP/MCFGは異なること、そして実機結果はS26直販とSC-54Eの2台に
 | SC-54E / DCM | SC54EOMU1EZIH | 17 | Samsung FUS | `96cd2edba8785a16de30f9ec7c632c9b726cdee41b6ed1f87fcc0f07f7da0e15` | AP/CP展開済み |
 | SM-F741Q / SJP | F741QOPU1EZJD | 17 | Samsung FUS | `a87ee76deb6585a6b212d45760683086b64c64b8b46411b160062335459bdc77` | AP/CP展開済み |
 | SM-S928Q / SJP | S928QOPU1EZK2 | 17 | Samsung FUS | `8149c373e58ebe33432409b528dcdaa2f405dccc176c7dd9732336b25f11fde0` | AP/CP展開済み |
+| SC-52E / DCM | SC52EOMU1EZIF | 17 | Samsung FUS | `3a574588cd9df0aa76c58b4e3b5c19898dabab48c3a88e0eb5ff0c30b3a1f507` | AP/CP展開済み |
+| SM-S938Q / SJP | S938QOPU1DZIF | 17 | Samsung FUS | `c79be7c4406ebc9296af277260f5fbc12301ea37dbbea43ddd29bb85cbe59139` | AP/CP展開済み |
+| SC-52F / DCM | SC52FOMU1DZIF | 17 | Samsung FUS | `aa52e77ee9b8412b3fc83febd23c41fd0b26a35d34bcf4109aa2e7667fca0441` | AP/CP展開済み |
+| SC-53G / DCM | SC53GOMU1BZI9 | 17 | Samsung FUS | `e01a377deb07b8e56a66bcc14e696ca4c13d97d09c2b867a317e96cf2e2065cc` | AP/CP展開済み |
 
 SC-54EのFUSアーカイブ名は
 `SC-54E_4_20260921143541_kcamerig1l_fac.zip.enc4`、復号後はAP
@@ -150,8 +169,9 @@ S24 UltraのFUSアーカイブ名は
 CP `modem.bin` SHA-256は
 `15d39aff0b6c8f5b90179dfef4a1aec18f82ab1fd3bd88b6cea797c2f5666d86`である。
 
-S25 UltraについてはSM-S938Q/SJP `S938QOPU1DZJC`（Android 17）の配布記録まで確認したが、
-本調査時点で巨大なFUS本体を未取得なので、X80バイナリ比較済みとは扱わない。
+S25 UltraはSJP/DCMとも同じ`DZIF`、S26 UltraもSJP/DCMとも同じ`BZI9`を選び、
+Android版、セキュリティパッチ、Samsung MQB/changelistを揃えた。Flip6とS24 Ultraは
+FUS上で同日同一ビルドの対が得られなかったため、APの対象ファイル一致とCPの意味比較を分けて扱う。
 
 ## Galaxy DIAGの実際の処理
 
@@ -302,6 +322,46 @@ handler不存在を確定できない。strip、inlining、別module、名称変
 service初期状態、log class別のSecure Logging policyで生じ得る。S24実機でのendpoint一覧、
 0xb0結果、security-key/log packet採取なしに、どの一つが原因かは確定できない。
 
+## 日本向けSJP/DCMの同一機種比較
+
+### AP側
+
+各パッケージの`vendor`から次の7ファイルを直接抽出し、SHA-256と`cmp`で比較した。
+
+```text
+lib64/libsec-ril.so
+lib64/libsec_semRil.so
+lib64/libdiag.so
+bin/diag-router
+bin/diag_mdlog
+bin/qrtr-lookup
+etc/init/vendor.qti.diag.rc
+```
+
+結果はFlip6、S24 Ultra、S25 Ultra、S26 Ultraの**全4世代で、同一機種のSJP/DCM間が
+7/7ファイル完全一致**だった。S25の`libsec-ril.so`は両方
+`c837d998726e4e5503c46d7ca63b611543f3acfb7b9fc0743936c46861e8afba`、
+S26では既取得SJPとDCMを含め7/7が一致した。このため販売経路別AP RIL、diag-router、
+libdiagの差を今回の初期公開状態の原因にはできない。
+
+### CP側
+
+| 世代 | SJP `modem.bin` | DCM `modem.bin` | MPSS Build ID | 主な差 |
+|---|---|---|---|---|
+| Flip6/X75 | `2914b9df...b35b61` | `00c8e7f2...1bff27b` | 同一 | リリース日、OEM SW、MCFG/RF構成 |
+| S24/X75 | `15d39aff...66d86` | `efd71c3c...5756b2` | `MPSS.DE.5.0-02520.3-LANAI_GEN_PACK-1.62174.441`で一致 | リリース日、OEM SW、MCFG/RF構成 |
+| S25/X80 | `7d8cb75c...e5e08` | `cfef07fd...0732a2` | `MPSS.DE.7.0-02170.5-PAKALA_GEN_PACK-1.85011.419`で一致 | Qualcomm buildは同じだがMPSS segment、OEM SW、RF/HW構成は別生成 |
+| S26/X85 | `a5e0ada5...7c881` | `59848272...760ff` | `MPSS.DE.9.0-01972.5-KAANAPALI_GEN_PACK-1.129782.405`で一致 | `modem.b00`〜`b26`は一致、`b27`とOEM SW、RF/HW構成が異なる |
+
+CPパッケージ全体が異なること自体は、DIAG暗号化状態の差を意味しない。各世代の
+`APAC/DCM/Commercial/mcfg_sw.mbn`を`mbn-mcfg-tools`で展開すると、SJP格納版とDCM格納版の
+`parsed_nv_files`・`parsed_nv_items`は完全一致した。中身はcarrier policy、緊急番号、
+NV 71/880/881/882等で、`diag_encrypt`、DIAG endpoint、CP User Logの設定はない。
+
+したがって、現時点の差分候補はCPの機種別OEM softwareとFUS外のfactory modem EFSへ絞られる。
+特にS26ではQualcomm MPSS本体の主要segmentが一致しているため、SJP実機の初期ロックを
+「SJPのQualcomm本体だけが暗号化版」と説明することはできない。
+
 ## `RIL_RESULT=-37` の正確な意味
 
 Android 17の `SemTelephonyController.invokeOemRilRequestRawForPhone` は例外時に次を返す。
@@ -388,6 +448,33 @@ SECURITY_KEY_LIST
 log classifier別の暗号化処理も含まれる。これらは**機能の存在**を示すだけで、SC-54E実機で
 暗号化がONか、どのlog ID/classに適用されるかまでは示さない。
 
+QDigのQualcomm split-ELF loaderを追加したGhidra 12.2でFlip6 SJPの`modem.mdt`を解析すると、
+設定初期化関数は`0xbcdd9278`、security設定反映関数は`0xbcdd7c60`に復元された。
+初期化関数の主要処理は次の通りである。
+
+```c
+if (!efs_exists("/nv/item_files/diag/diag_encrypt")) {
+    log("Config file does not exist");
+    return;
+}
+if (efs_get(path, &value, 1) != 1) {
+    log("Error returned by efs_get()");
+    return;
+}
+switch (parse_decimal(value)) {
+case 0: security_set(1, {0, 0}); security_set(2, {0, 0, 0, 0}); break;
+case 1: security_set(1, {1, 1}); break;
+case 2: security_set(2, {1, 0, 0, 0}); break;
+case 3: security_set(2, {1, 1, 0, 0}); break;
+default: log("Unrecognized value");
+}
+```
+
+この逆コンパイルから確定できるのは、値0〜3が2系統のsecurity状態を選ぶことと、
+ファイルがなければ既定値のまま戻ることまでである。内部setterの第2系統には
+`Secure ORANGE bypass settings`というログがあるが、第1系統と各値の正式名称はstrip済みbinaryだけでは
+確定できないため、「0=平文、1=暗号化」のような名称付けは行っていない。
+
 S26 X85の`qdsp6_oemsw.mbn`には次の文字列がある。
 
 ```text
@@ -439,6 +526,7 @@ shasum -a 256 firmware.zip
 unzip firmware.zip 'AP_*' 'CP_*' -d odin
 tar -xf odin/CP_*.tar.md5 -C cp modem.bin.lz4
 lz4 -d cp/modem.bin.lz4 cp/modem.bin
+MTOOLS_SKIP_CHECK=1 mcopy -s -i cp/modem.bin '::*' cp/modem-files/
 tar -xf odin/AP_*.tar.md5 -C ap super.img.lz4
 lz4 -d ap/super.img.lz4 ap/super.img
 python3 tools/extract_lp_partition.py ap/super.img parts \
@@ -448,6 +536,15 @@ fsck.erofs --extract=libsec-ril.so \
 objdump -T -C libsec-ril.so | rg 'CpUserLog|DoOemMisc'
 objdump -d -C --start-address=0x3b8b90 --stop-address=0x3b95c0 libsec-ril.so
 jadx -d jadx-tcommon telephony-common.jar
+mbn-tool -e \
+  cp/modem-files/image/modem_pr/mcfg/configs/mcfg_sw/generic/APAC/DCM/Commercial/mcfg_sw.mbn \
+  mcfg-dcm
+diff -ru mcfg-sjp/parsed_nv_files mcfg-dcm/parsed_nv_files
+diff -ru mcfg-sjp/parsed_nv_items mcfg-dcm/parsed_nv_items
+/opt/homebrew/opt/ghidra/libexec/support/analyzeHeadless PROJECTS Flip6Diag \
+  -import cp/modem-files/image/modem.mdt \
+  -scriptPath tools/ghidra \
+  -postScript DiagStringXrefs.java
 ```
 
 `tools/extract_lp_partition.py` はSamsungの巨大なsuper全体を別コピーせず、指定partitionのextent
@@ -456,11 +553,11 @@ jadx -d jadx-tcommon telephony-common.jar
 ## 追加検証が必要な事項
 
 1. SC-54Eで公開済み状態を保持したまま、RIL/CP応答のraw errorと0xb0前後のログを採る。
-2. 同一CPビルドに近いDCM/SJPを揃え、`qdsp6_oemsw.mbn` とcarrier MCFGの差を関数単位で比較する。
-3. 直販SM-F741Qの実機で、初期QRTR状態と0xb0結果を初めて測定する。
-4. S24実機とS25 AP/CPを調べ、同じアドレスではなくシンボル/XREF/命令列で対応関数を照合する。
-5. S26上でDIAG 0x9eと0x0833の有無を受動的に記録し、公開とsecure logを分離する。
-6. NSGについてはDCI受信と全画面・全ログ種別の復号対応を区別する。
+2. 直販SM-F741Q、S24 Ultra、S25 Ultraの実機で、初期QRTR状態、0xb0結果、
+   `/nv/item_files/diag/diag_encrypt`の存在と値を読み取り専用で測定する。
+3. S26上でDIAG 0x9eと0x0833の有無を受動的に記録し、公開とsecure logを分離する。
+4. NSGについてはDCI受信と全画面・全ログ種別の復号対応を区別する。
+5. X80/X85のSecure Logging初期化関数を、X75と同じくsplit-ELF全体から関数単位で追跡する。
 
 ## 参照
 
@@ -468,7 +565,9 @@ jadx -d jadx-tcommon telephony-common.jar
 - [Samsung Galaxy Z Flip6 SC-54E EZIH firmware](https://www.sammobile.com/samsung/galaxy-z-flip-6/firmware/SC-54E/DCM/download/SC54EOMU1EZIH/2112026/)
 - [NTTドコモ SC-54E 製品アップデート](https://www.docomo.ne.jp/support/product_update/sc54e/)
 - [Samsung Galaxy S24 Ultra S928QOPU1EZK2 firmware](https://www.sammobile.com/samsung/galaxy-s24-ultra/firmware/SM-S928Q/SJP/download/S928QOPU1EZK2/2218961/)
-- [Samsung Galaxy S25 Ultra firmware catalog](https://www.sammobile.com/samsung/galaxy-s25-ultra/firmware/)
+- [Samsung Galaxy S25 Ultra S938QOPU1DZIF firmware](https://www.sammobile.com/samsung/galaxy-s25-ultra/firmware/SM-S938Q/SJP/download/S938QOPU1DZIF/2190499/)
+- [Samsung Galaxy S25 Ultra SC52FOMU1DZIF firmware](https://www.sammobile.com/samsung/galaxy-s25-ultra/firmware/SC-52F/DCM/download/SC52FOMU1DZIF/2030381/)
+- [Samsung Galaxy S26 Ultra SC53GOMU1BZI9 firmware](https://www.sammobile.com/samsung/galaxy-s26-ultra/firmware/SC-53G/DCM/download/SC53GOMU1BZI9/2028432/)
 - [Qualcomm qcom-log-collector](https://github.com/qualcomm/qcom-log-collector/tree/0a10daffba7556f03ff87786fa7e9b976d622c99)
 - [Qualcomm qcom-log-collector User Guide](https://github.com/qualcomm/qcom-log-collector/blob/0a10daffba7556f03ff87786fa7e9b976d622c99/doc/USER_GUIDE.md)
 - [qcom-band-menu](https://github.com/Fronsipswu/qcom-band-menu/tree/cddebf02c69f1dda021cf8d61f1a096fc2242278)
