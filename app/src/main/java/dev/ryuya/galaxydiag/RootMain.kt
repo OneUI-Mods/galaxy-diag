@@ -1,6 +1,5 @@
 package dev.ryuya.galaxydiag
 
-import android.os.Build
 import android.os.IBinder
 import android.system.Os
 import kotlin.system.exitProcess
@@ -14,9 +13,6 @@ object RootMain {
                 "INVALID_OPERATION"
             }
             check(Os.getuid() == 0) { "ROOT_REQUIRED" }
-            check(Build.MANUFACTURER.equals("samsung", true) && Build.MODEL == "SM-S948Q") {
-                "UNSUPPORTED_DEVICE"
-            }
             val operation = args[0]
             if (operation != "status") {
                 // The stock Samsung API rejects root/shell UIDs; root authorizes

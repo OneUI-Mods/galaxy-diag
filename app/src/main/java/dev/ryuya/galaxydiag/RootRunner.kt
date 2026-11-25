@@ -33,7 +33,7 @@ object RootRunner {
                         success && open == true -> "MPSS接続を確認しました。NSGで測定できます。"
                         success && operation == "disable" -> "DIAG許可を解除しました。"
                         success -> "MPSSは公開されていません。許可を適用してください。"
-                        "UNSUPPORTED_DEVICE" in output -> "この端末は対象外です。確認済み端末はSM-S948Qです。"
+                        "PHONE_SERVICE_UNAVAILABLE" in output -> "この端末ではSamsungの電話サービスを利用できません。Galaxy以外では動作しません。"
                         "RIL_RESULT=0" in output -> "許可通知は送信済みですが、MPSSの状態を確認できませんでした。再適用してください。"
                         else -> "root許可と端末の状態を確認してください。\n" + output.trim().takeLast(500)
                     }

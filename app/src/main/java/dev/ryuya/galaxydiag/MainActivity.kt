@@ -221,7 +221,7 @@ class MainActivity : AppCompatActivity() {
         MaterialAlertDialogBuilder(this)
             .setTitle("Galaxy DIAG ${BuildConfig.VERSION_NAME}")
             .setMessage(
-                "GalaxyのDIAG接続を準備するrootアプリです。\n\n対応確認：SM-S948Q / Android 17\n\n初回はKernelSUなどのroot管理アプリでGalaxy DIAGを許可してください。常駐・定期通信は行いません。Samsung側が許可を閉じた場合は再適用できます。",
+                "GalaxyのDIAG接続を準備するrootアプリです。\n\n動作確認済み：SM-S948Q / Android 17（ほかのGalaxyでも試せます）\n\n初回はKernelSUなどのroot管理アプリでGalaxy DIAGを許可してください。常駐・定期通信は行いません。Samsung側が許可を閉じた場合は再適用できます。",
             )
             .setNeutralButton("外観") { _, _ -> showAppearance() }
             .setPositiveButton("閉じる", null)
