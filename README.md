@@ -35,6 +35,6 @@ Galaxyのモデム測定接続を準備するrootアプリです。アプリを�
 
 常駐サービス、周期的な監視、アプリ独自のネット通信はありません。処理中だけroot補助プロセスを動かし、終了後は停止します。DIAG許可と、NSG自身の測定・ログ収集は別です。測定を終えたらNSG側でも終了してください。DIAGを有効にした状態の長時間の電池消費は未測定です。
 
-ライセンスはアプリ内で検索・閲覧できます。[MIT License](LICENSE)。開発・署名・検証記録は[開発者向けガイド](docs/DEVELOPMENT.md)を参照してください。
+ライセンスはアプリ内で検索・閲覧できます。[MIT License](LICENSE)。開発・署名・検証記録は[開発者向けガイド](docs/DEVELOPMENT.md)、ファームウェアから確認した動作原理は[DIAG比較解析](docs/qualcomm-diag-firmware-comparison.md)を参照してください。
 
 [Build environment / ビルド環境](docs/build-environment.md)

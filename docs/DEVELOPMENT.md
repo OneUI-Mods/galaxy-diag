@@ -10,7 +10,7 @@ python3 tools/package_release.py --check-release-apk app/build/outputs/apk/relea
 
 ## Fixed notification
 
-`RootMain` only accepts enable, disable and status. It verifies root authorization and the tested Samsung model, then temporarily drops to UID/GID 1000. It invokes Samsung `ISemTelephony.invokeOemRilRequestRawForPhone(0, request, response)`. The fixed OEM bytes are `11 b0 00 05 01` (enable) / `11 b0 00 05 00` (disable), matching stock SysDump's OTP-status notification. The app sends the permission notification directly; it does not perform OTP authentication or provision an engineering token. Do not describe this as passing Samsung authentication.
+`RootMain` only accepts enable, disable and status. It verifies root authorization and the tested Samsung model, then temporarily drops to UID/GID 1000. It invokes Samsung `ISemTelephony.invokeOemRilRequestRawForPhone(0, request, response)`. The fixed OEM bytes are `11 b0 00 05 01` (enable) / `11 b0 00 05 00` (disable). Firmware analysis identifies subcommand `0xb0` as Samsung RIL's CP User Log setting; it is not a Domestic OEM command. The app sends the fixed setting request directly; it does not perform OTP authentication, retrieve security keys, decrypt DIAG traffic or provision an engineering token. Do not describe this as passing Samsung authentication. See [the firmware comparison](qualcomm-diag-firmware-comparison.md).
 
 The RIL result alone is insufficient. Qualcomm QRTR service4097 must expose remote MODEM:CMD(instance1,node0) and MODEM:DCI_CMD(instance3,node0); local node1 entries do not count. Publication is asynchronous. Each request has bounded wait and the root process exits. There are no arbitrary OEM/RIL/NV/EFS payloads, firmware patches, policy changes, or credential operations.
 
