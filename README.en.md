@@ -10,11 +10,11 @@ Automatic startup after device boot can be switched on or off in settings. The d
 
 ## Requirements
 
-- A Samsung Galaxy device (validated on the Galaxy S26 Ultra **SM-S948Q / SM8850 / Android 17**).
+- A compatible Samsung Galaxy device.
 - A working root environment, such as KernelSU.
 - Network Signal Guru, installed separately, for measurements.
 
-There is no model restriction: the permission request is also sent on Galaxy devices other than the validated one. Some models, OS versions, or modems may not connect, and OS or modem updates can break compatibility even on the same model. The initial release did not validate actual 5G NR reception or post-boot automatic application through a physical device reboot. The job shared with startup processing was physically validated through recovery of a closed connection.
+On an unsupported device, the app displays **Unsupported**. OS or modem updates may affect compatibility even on the same model. The initial release did not validate actual 5G NR reception or post-boot automatic application through a physical device reboot. The job shared with startup processing was physically validated through recovery of a closed connection.
 
 ## Usage
 

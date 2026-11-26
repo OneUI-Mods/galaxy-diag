@@ -1,0 +1,4 @@
+<resources>
+    <string name="device_unsupported">非対応</string>
+    <string name="licenses">ライセンス</string>
+</resources>

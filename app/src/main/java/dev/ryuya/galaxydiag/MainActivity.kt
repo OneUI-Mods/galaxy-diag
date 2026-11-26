@@ -43,6 +43,20 @@ class MainActivity : AppCompatActivity() {
             ui.text("Galaxy DIAG", 36f, medium = true),
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = ui.dp(24) },
         )
+        if (!DeviceSupport.current) {
+            val unavailable = ui.card(R.color.hero)
+            unavailable.addView(
+                ui.text(getString(R.string.device_unsupported), 23f, medium = true).apply {
+                    setPadding(ui.dp(22), ui.dp(22), ui.dp(22), ui.dp(22))
+                    isAccessibilityHeading = true
+                }
+            )
+            content.addView(unavailable, LinearLayout.LayoutParams(-1, -2).apply { topMargin = ui.dp(24) })
+            val licenses = ui.card().apply { addView(licenseRow()) }
+            content.addView(licenses, LinearLayout.LayoutParams(-1, -2).apply { topMargin = ui.dp(12) })
+            ui.install(content)
+            return
+        }
         content.addView(
             ui.text("モデム測定の接続準備", 15f, R.color.muted),
             LinearLayout.LayoutParams(-1, -2).apply {
@@ -149,11 +163,7 @@ class MainActivity : AppCompatActivity() {
             ui.row("DIAG許可を解除", null, R.drawable.ic_power, danger = true) { confirmDisable() },
         )
         other.addView(ui.divider())
-        other.addView(
-            ui.row("ライセンス", null, R.drawable.ic_document) {
-                startActivity(Intent(this, LicensesActivity::class.java))
-            },
-        )
+        other.addView(licenseRow())
         val otherCard = ui.card()
         otherCard.addView(other)
         content.addView(otherCard)
@@ -166,6 +176,10 @@ class MainActivity : AppCompatActivity() {
         ui.install(content)
         showSaved()
         if (savedInstanceState == null) operate("enable")
+    }
+
+    private fun licenseRow() = ui.row(getString(R.string.licenses), null, R.drawable.ic_document) {
+        startActivity(Intent(this, LicensesActivity::class.java))
     }
 
     private fun showSaved() {
@@ -221,7 +235,7 @@ class MainActivity : AppCompatActivity() {
         MaterialAlertDialogBuilder(this)
             .setTitle("Galaxy DIAG ${BuildConfig.VERSION_NAME}")
             .setMessage(
-                "GalaxyのDIAG接続を準備するrootアプリです。\n\n動作確認済み：SM-S948Q / Android 17（ほかのGalaxyでも試せます）\n\n初回はKernelSUなどのroot管理アプリでGalaxy DIAGを許可してください。常駐・定期通信は行いません。Samsung側が許可を閉じた場合は再適用できます。",
+                "GalaxyのDIAG接続を準備するrootアプリです。\n\n初回はKernelSUなどのroot管理アプリでGalaxy DIAGを許可してください。常駐・定期通信は行いません。Samsung側が許可を閉じた場合は再適用できます。",
             )
             .setNeutralButton("外観") { _, _ -> showAppearance() }
             .setPositiveButton("閉じる", null)

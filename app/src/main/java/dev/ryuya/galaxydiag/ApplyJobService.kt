@@ -12,6 +12,7 @@ class ApplyJobService : JobService() {
     private val handler = Handler(Looper.getMainLooper())
 
     override fun onStartJob(params: JobParameters): Boolean {
+        if (!DeviceSupport.current) return false
         if (!RootRunner.prefs(this).getBoolean("auto_boot", true)) return false
         stopped = false
         work =

@@ -12,6 +12,7 @@ object RootRunner {
     @Synchronized
     fun run(context: Context, operation: String): Result {
         require(operation in setOf("enable", "disable", "status"))
+        if (!DeviceSupport.current) return Result(false, null, context.getString(R.string.device_unsupported))
         var process: Process? = null
         val result =
             try {

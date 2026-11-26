@@ -1,3 +1,5 @@
 <resources>
-    <string name="app_name">Galaxy DIAG</string>
+    <string name="app_name" translatable="false">Galaxy DIAG</string>
+    <string name="device_unsupported">Unsupported</string>
+    <string name="licenses">Licenses</string>
 </resources>

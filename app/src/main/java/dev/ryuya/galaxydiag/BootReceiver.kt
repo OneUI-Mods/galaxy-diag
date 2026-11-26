@@ -22,6 +22,7 @@ class BootReceiver : BroadcastReceiver() {
         const val JOB_ID = 8101
 
         fun schedule(context: Context, attempt: Int) {
+            if (!DeviceSupport.current) return
             val extras = PersistableBundle().apply { putInt("attempt", attempt) }
             context
                 .getSystemService(JobScheduler::class.java)

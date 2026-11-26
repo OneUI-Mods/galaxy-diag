@@ -23,6 +23,7 @@ def run(*args, capture=False):
 def validate(apk):
     badging = run(TOOLS / 'aapt2', 'dump', 'badging', apk, capture=True).stdout
     assert f"name='{PACKAGE}'" in badging and "targetSdkVersion:'37'" in badging
+    assert "minSdkVersion:'37'" in badging
     assert 'application-debuggable' not in badging
     manifest = run(TOOLS / 'aapt2', 'dump', 'xmltree', apk, '--file', 'AndroidManifest.xml', capture=True).stdout.lower()
     assert not any(name in manifest for name in ['testactivity', 'probeactivity', 'fixtureactivity', 'instrumentation', 'android.permission.internet', 'android.permission.foreground_service'])
